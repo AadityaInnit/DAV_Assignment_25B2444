@@ -81,7 +81,10 @@ function getFallbackMessage(grade, formData) {
     return `Your predicted grade of ${grade.toFixed(2)} puts you in the top tier. Your study hours (${study.toFixed(1)} hrs/day, ${sign}${diff} vs campus average) are a key driver — keep that consistency, and watch that internet usage (${internet.toFixed(1)} hrs/day) doesn't creep up during exam season.`;
   }
   if (grade >= 6.0) {
-    return `Your predicted grade of ${grade.toFixed(2)} is solid but there is clear room to grow. You are studying ${study.toFixed(1)} hrs/day (${sign}${diff} vs the 4.3 hr campus average) — try adding just 45 focused minutes daily and aim to push attendance above ${Math.min(100, Math.round(attendance + 8))}%.`;
+    const attendanceTip = attendance >= 95
+      ? `maintain your strong attendance (${attendance.toFixed(0)}%)`
+      : `aim to push attendance above ${Math.min(99, Math.round(attendance + 8))}%`;
+    return `Your predicted grade of ${grade.toFixed(2)} is solid but there is clear room to grow. You are studying ${study.toFixed(1)} hrs/day (${sign}${diff} vs the 4.3 hr campus average) — try adding just 45 focused minutes daily and ${attendanceTip}.`;
   }
   return `Your predicted grade of ${grade.toFixed(2)} suggests your current habits need adjustment. Your study hours (${study.toFixed(1)} hrs/day) are below the 4.3 hr campus average — consider replacing ${Math.min(internet, 1.5).toFixed(1)} of your ${internet.toFixed(1)} daily internet hours with structured revision this week.`;
 }
@@ -184,9 +187,14 @@ async function fetchRecommendation(formData, predictedGrade) {
     ? `\nWARNING: This student is studying ${study} hrs/day on only ${sleep} hrs of sleep. The high predicted grade is a statistical artefact — the model rewards study hours but cannot model sleep-deprivation-induced cognitive decline. Do NOT praise the study hours. Prioritise sleep above all else.\n`
     : "";
 
+  // Attendance ceiling note — prevents LLM from suggesting impossible targets
+  const attendanceNote = Number(formData.AttendanceRate) >= 95
+    ? `\nNote: This student's attendance is ${Number(formData.AttendanceRate).toFixed(0)}% — already at or near the maximum possible. Do NOT suggest increasing attendance further.`
+    : `\nNote: Attendance is capped at 100%. Do not suggest a target above 100%.`;
+
   const userPrompt = `${maxOutNote}Student's predicted Cumulative Grade: ${predictedGrade.toFixed(2)} / 10.0
 Grade context: 4.5–5.9 = at risk, 6.0–7.4 = average, 7.5–10.0 = strong performer.
-
+${attendanceNote}
 Top 3 most influential habit features:
 ${top3Context}
 
